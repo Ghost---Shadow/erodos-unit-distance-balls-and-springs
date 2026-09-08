@@ -9,6 +9,11 @@ over-constrained — the assembly is frustrated and cannot satisfy everything.
 Relax it, anneal, and count the springs that ended up within `ε` of unit length.
 Those are the edges of a unit-distance graph.
 
+The counts are not really the point. The thing this repository does that a
+construction cannot is **generate inspirations on demand** — ask it for `n`
+points and it hands back a structure nobody designed, which you can then read,
+name, and generalise by hand. [Jump to that](#what-it-is-actually-for-inspirations-on-demand).
+
 ```bash
 pip install -r requirements.txt
 
@@ -71,7 +76,7 @@ Excellent for small `n`, and it runs out of steam quickly.
 
 | n | triangular | Erdős grid | Eisenstein grid | prism | this solver |
 |---|---|---|---|---|---|
-| 20 | 44 | 37 | 44 | 40 | **48** |
+| 20 | 44 | 37 | 44 | 40 | **49** |
 | 30 | 69 | 66 | 79 | 78 | **79** |
 | 50 | 123 | 130 | **167** | 135 | 124 |
 | 80 | 207 | 222 | **311** | 247 | 171 |
@@ -86,8 +91,74 @@ improve locally is the useful move there:
 python run.py --n 30 --headless --init prism --jitter 0.10 --trials 24
 ```
 
-(Solver figures use 24 restarts up to `n = 50` and 4 at `n = 80`, so the last is
-a lower bound on what it would find given more compute, not a ceiling.)
+(Solver figures use 64 restarts at `n = 20` and `30`, 24 at `n = 50` and 4 at
+`n = 80`, so the last two are lower bounds on what it would find given more
+compute, not ceilings. The 49 at `n = 20` is exact to 2e-16 per edge, with the
+next-closest pair 0.19 away from unit — no tolerance call is involved.)
+
+## What it is actually for: inspirations on demand
+
+This is the part of the repository worth taking. Read the table above and the
+solver looks like a losing proposition — it is behind the constructions by
+`n = 50` and hopeless by `n = 80`. But the counts were never the product. What
+this does that no construction can is **produce candidate structures nobody
+designed, at whatever `n` you ask for, in under a minute**.
+
+![random starts, optimised](./docs/random_gallery.png)
+
+Nothing above was seeded. Every panel starts as uniform random points and is
+only ever pushed downhill on spring energy — the solver has no notion of a
+lattice, a hexagon or a rhombus anywhere in it. Four of the eight land on the
+proven optimum.
+
+Ask again with different seeds and the same shapes keep coming back:
+
+![twelve independent runs at n = 20](./docs/random_seeds.png)
+
+Twelve independent single runs at `n = 20`, none discarded, good and bad alike
+— 34 to 48 unit distances.
+
+**By eye — and it is only by eye, there is no motif detector in this code — the
+runs converge on a short list of popular patterns:**
+
+- **the centered hexagon**, a hub plus six unit vectors. That *is* the `n = 7`
+  panel, found from random points, and it is the block the flower sums are
+  built from.
+- **rhombi glued along a unit short diagonal** — the most common local unit in
+  every large panel, and the reason the rhombic lattice outscores the square.
+- **strips of unit triangles**, clearest at seed 10: the prism, arrived at from
+  below.
+- **triangulated patches that are lattice-like but mutually rotated**, meeting
+  along a seam instead of forming one clean grain. The big panels look closer to
+  polycrystalline than to a single lattice fragment. Whether that is a property
+  of the optima or a limitation of the search is open — worth knowing before you
+  generalise from one.
+
+Several of the constructions in the next section were reached this way, by
+reading pictures like these and generalising what was in them. The loop is: run
+the optimiser where it is strong (`n ≲ 30`), name the motif by eye, generalise
+it analytically — tile it, Minkowski-sum it, rescale it — then verify the closed
+form numerically and audit it for coincident points.
+[The workflow in full](./docs/constructions.md#the-lattices-are-not-assumed-they-emerge).
+
+Naming the motif is human inspection, and there is currently no substitute for
+it here: the solver finds structures far more readily than it explains them.
+Not everything came from this route — the Eisenstein grid fell out of the
+arithmetic of Loeschian numbers, not out of a picture — but the geometric
+families did.
+
+It also fails legibly, which matters when you are mining pictures for ideas.
+Seed 2 stranded two points as detached unit-distance pairs and scored 34; that
+is visible at a glance, and a failure you can see is worth more than a number
+you cannot check.
+
+```bash
+python scripts/random_gallery.py            # regenerate both figures
+python scripts/random_gallery.py --quick    # fewer restarts, for a smoke test
+```
+
+Configurations are written to `results/random_gallery/` so a panel that catches
+your eye can be re-examined without re-running the search.
 
 ## Constructions
 
@@ -143,8 +214,9 @@ never move; only which pairs count changes.
 | `render.py` | live 2D view and static PNG output |
 | `cli.py` | argument parsing and the three run modes |
 
-`scripts/` holds the figure generator plus four exploration scripts:
-`explore_hex.py`, `explore_prism.py`, `explore_rescale.py` and `asymptotics.py`.
+`scripts/` holds the figure generator, `random_gallery.py` (the inspiration
+run above), and four exploration scripts: `explore_hex.py`, `explore_prism.py`,
+`explore_rescale.py` and `asymptotics.py`.
 
 Available starts: `random`, `triangular`, `square`, `erdos_grid`,
 `eisenstein_grid`, `hex_flower`, `hex_minkowski`, `prism`, `prism_double`,
