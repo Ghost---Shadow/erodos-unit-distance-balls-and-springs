@@ -17,7 +17,7 @@ python run.py --n 40 --headless --trials 24
 python run.py --benchmark                  # score against the known optima
 ```
 
-![solved configurations](docs/solutions.png)
+![solved configurations](./docs/solutions.png)
 
 Every segment in those pictures is exactly length 1, to about 2e-16.
 
@@ -96,7 +96,7 @@ integrator absorbs by scaling its timestep with `σ` and its damping with `1/σ`
 
 ## How a run works
 
-![one run, start to finish](docs/anneal.png)
+![one run, start to finish](./docs/anneal.png)
 
 Each round has two halves, because the relaxation is good at combinatorics and
 bad at precision — it will happily park a spring at 1.0004.
@@ -165,7 +165,7 @@ Both terms are levers.
 **The base lattice sets the constant**, and it is worth being explicit about
 which lattice that is, because it goes by three names.
 
-![why the hexagonal lattice is the 60-degree rhombus lattice](docs/rhombus.png)
+![why the hexagonal lattice is the 60-degree rhombus lattice](./docs/rhombus.png)
 
 Take two unit vectors 60° apart and tile the plane with the cell they span.
 That cell is a **rhombus** with four unit sides. Its long diagonal is √3, but
@@ -204,7 +204,7 @@ the densest small unit-distance set you have.
 | centered hexagon | 7 | 12 | **4.71n** | 3.71n | wheel `W₆` on every site |
 | flower sum, k=2 | 49 | 168 | **6.43n** | 5.43n | see below |
 
-![construction family](docs/constructions.png)
+![construction family](./docs/constructions.png)
 
 Every entry is verified numerically and audited for overlapping points; the
 measured densities sit just below their limits because a finite patch has a
@@ -280,7 +280,7 @@ Available starts: `random`, `triangular`, `square`, `erdos_grid`, `hex_flower`,
 
 ## The live view
 
-![live view](docs/live_view.png)
+![live view](./docs/live_view.png)
 
 <kbd>space</kbd> pause · <kbd>r</kbd> restart · <kbd>n</kbd> new start ·
 <kbd>p</kbd> project onto exact unit distances · <kbd>[</kbd> <kbd>]</kbd> change `ε` ·
