@@ -153,6 +153,21 @@ version at every size measured:
 | Erdős grid (square) | 288 | 1212 | 4944 | 19568 |
 | Eisenstein grid (triangular) | **411** | **1470** | **6706** | **25225** |
 
+![the Eisenstein grid](./eisenstein.png)
+
+Left: the distance spectrum of the triangular lattice at `n = 900`. The winner
+is `r = 91 = 7 × 13` — both factors ≡ 1 mod 3, and every runner-up is the same
+kind of number (`133 = 7 × 19`, `49 = 7²`, `217 = 7 × 31`). That is the whole
+mechanism: primes ≡ 1 mod 3 split in the Eisenstein integers, and each one
+multiplies the number of ways `r` can be written as `i² + ij + j²`.
+
+Middle: the resulting point set. It *is* the triangular lattice — the points
+have not moved, only the scale — but far more pairs now sit at distance 1.
+
+Right: why. The central ball's unit neighbours are the `r = 7` shell, twelve of
+them, reaching past its six nearest. Rescaling does not add points or edges to
+the lattice; it re-chooses which shell counts as unit, and picks the fattest one.
+
 That is `--init eisenstein_grid`, and it is the strongest construction here.
 Its most popular distance is `sqrt(7)`, and 7 ≡ 1 mod 3 exactly as the theory
 predicts. `scripts/explore_rescale.py` reproduces all of the above.

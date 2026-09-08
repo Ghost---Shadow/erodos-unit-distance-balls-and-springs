@@ -111,6 +111,12 @@ Separately, Erdős' rescaling trick — find the most popular pairwise distance 
 scale it to 1 — turns out to do nothing for flower sums and a great deal for the
 triangular lattice, where it beats Erdős' own square-grid version at every size.
 
+![the Eisenstein grid](./docs/eisenstein.png)
+
+That is the strongest construction here, and it is just the triangular lattice
+with the scale chosen so its fattest distance shell becomes the unit. The points
+never move; only which pairs count changes.
+
 [All of it, with the arithmetic](./docs/constructions.md) ·
 [growth rates and bounds](./docs/growth.md)
 

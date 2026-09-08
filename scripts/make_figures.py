@@ -368,5 +368,126 @@ def figure_growth(path):
     print("wrote", path)
 
 
+
+
+def _loeschian_factors(r):
+    """Factor r and mark the primes congruent to 1 mod 3.
+
+    Those are the ones that split in the Eisenstein integers, and each of
+    them multiplies the number of ways r can be written as i^2 + ij + j^2.
+    """
+    r = int(r)
+    out, d = [], 2
+    while d * d <= r:
+        while r % d == 0:
+            out.append(d)
+            r //= d
+        d += 1
+    if r > 1:
+        out.append(r)
+    return out
+
+
+def figure_eisenstein(path):
+    """What the Eisenstein grid actually is, and why it works.
+
+    It is the plain triangular lattice, rescaled so that its *most
+    frequently realised* distance becomes 1.  The point set is unchanged;
+    what changes is which pairs count.
+    """
+    NL = chr(10)
+    fig, axes = plt.subplots(1, 3, figsize=(19.5, 6.6), facecolor=BG)
+    for ax in axes:
+        ax.set_facecolor(BG)
+        for sp in ax.spines.values():
+            sp.set_color("#232a38")
+
+    # -- panel 1: the distance spectrum, i.e. the spike being aimed at --
+    ax = axes[0]
+    n_spec = 900
+    rows = I.distance_spectrum(I.triangular_lattice(n_spec), top=14)
+    mults = [m for m, _ in rows]
+    norms = [int(round(d * d)) for _, d in rows]
+    colors = ["#c678dd" if i == 0 else "#3d4a5c" for i in range(len(rows))]
+    ax.bar(range(len(rows)), mults, color=colors, width=0.75)
+    ax.set_xticks(range(len(rows)))
+    ax.set_xticklabels([str(r) for r in norms], color="#8b9ab2",
+                       fontsize=8.5, family="monospace")
+    ax.tick_params(colors="#8b9ab2", labelsize=8.5)
+    ax.set_xlabel("squared distance  r = i^2 + ij + j^2", color=FG,
+                  fontsize=10, family="monospace")
+    ax.set_ylabel("pairs realising it", color=FG, fontsize=10,
+                  family="monospace")
+    ax.set_title("the spectrum has a spike to aim at", color=FG,
+                 fontsize=12, family="monospace", pad=10)
+    win_r, win_m = norms[0], mults[0]
+    facs = _loeschian_factors(win_r)
+    ax.text(0.5, 0.94, "n = %d: winner r = %d = %s" %
+            (n_spec, win_r, " x ".join(str(f) for f in facs)),
+            transform=ax.transAxes, ha="center", color="#c678dd",
+            fontsize=10.5, family="monospace")
+    ax.text(0.5, 0.88, "every factor is 1 mod 3, and each one multiplies",
+            transform=ax.transAxes, ha="center", color="#8b9ab2",
+            fontsize=9.5, family="monospace")
+    ax.text(0.5, 0.83, "the number of representations", transform=ax.transAxes,
+            ha="center", color="#8b9ab2", fontsize=9.5, family="monospace")
+
+    # -- panel 2: the grid itself, small enough to read ----------------
+    ax = axes[1]
+    n_small = 120
+    P = I.eisenstein_grid(n_small)
+    edges = unit_edges(P, 1e-9)
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.add_collection(LineCollection(segments(P, edges), colors=EDGE,
+                                     linewidths=1.0, alpha=0.75, zorder=2))
+    ax.scatter(P[:, 0], P[:, 1], s=16, c=BALL, edgecolors="#1b1f2a",
+               linewidths=0.5, zorder=3)
+    lo, hi = P.min(axis=0), P.max(axis=0)
+    cx, cy = 0.5 * (lo + hi)
+    half = 0.5 * float((hi - lo).max()) + 0.3
+    ax.set_xlim(cx - half, cx + half)
+    ax.set_ylim(cy - half, cy + half)
+    small_r = int(round(I.distance_spectrum(I.triangular_lattice(n_small), 1)[0][1] ** 2))
+    ax.set_title(NL.join(["the same points, rescaled so r = %d is unit" % small_r,
+                          "n = %d, %d unit distances = %.2fn"
+                          % (n_small, edges.shape[0], edges.shape[0] / n_small)]),
+                 color=FG, fontsize=12, family="monospace", pad=10)
+
+    # -- panel 3: one ball's neighbourhood ------------------------------
+    ax = axes[2]
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    centre = int(np.argmin(((P - P.mean(axis=0)) ** 2).sum(axis=1)))
+    d = np.sqrt(((P - P[centre]) ** 2).sum(axis=1))
+    nb = np.nonzero(np.abs(d - 1.0) < 1e-9)[0]
+    ax.scatter(P[:, 0], P[:, 1], s=14, c="#3d4a5c", zorder=1)
+    for j in nb:
+        ax.plot([P[centre, 0], P[j, 0]], [P[centre, 1], P[j, 1]],
+                color="#c678dd", lw=1.8, zorder=2)
+    ax.scatter(P[nb, 0], P[nb, 1], s=42, c=EDGE, edgecolors="#1b1f2a",
+               linewidths=0.6, zorder=3)
+    ax.scatter([P[centre, 0]], [P[centre, 1]], s=80, c=BALL,
+               edgecolors="#1b1f2a", linewidths=0.8, zorder=4)
+    ax.set_xlim(P[centre, 0] - 1.6, P[centre, 0] + 1.6)
+    ax.set_ylim(P[centre, 1] - 1.6, P[centre, 1] + 1.6)
+    # r = 7 splits in the Eisenstein integers, so its shell holds 12
+    # points: the 6 lattice directions rotated both ways off axis.
+    ax.set_title(NL.join(["one ball's unit neighbours: %d of them" % nb.size,
+                          "the r = %d shell, reaching past the 6 nearest"
+                          % small_r]),
+                 color=FG, fontsize=12, family="monospace", pad=10)
+
+    fig.suptitle("the Eisenstein grid: a triangular lattice rescaled to its "
+                 "most popular distance",
+                 color=FG, fontsize=13, family="monospace", y=0.98)
+    fig.tight_layout(rect=(0, 0.01, 1, 0.92))
+    fig.savefig(path, facecolor=BG, dpi=120)
+    plt.close(fig)
+    print("wrote", path)
+
+
 if __name__ == "__main__":
     main()
