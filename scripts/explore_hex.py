@@ -23,7 +23,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from erdos_unit_distance.counting import count_unit_distances, min_separation
-from erdos_unit_distance.init import erdos_grid, triangular_lattice
+from erdos_unit_distance.init import (eisenstein_grid, erdos_grid,
+                                      triangular_lattice)
 
 TOL = 1e-9
 
@@ -107,7 +108,8 @@ def main():
         report(f"outer scale {scale:.3f}", hex_of_hex(200, scale))
 
     print("\nhead to head at matched n")
-    print(f"  {'n':>5}  {'triangular':>11}  {'grid':>6}  {'honeycomb':>10}  {'minkowski':>10}")
+    print(f"  {'n':>5}  {'triangular':>11}  {'grid':>6}  {'eisenstein':>11}  "
+          f"{'honeycomb':>10}  {'minkowski':>10}")
     for n in (19, 37, 61, 91, 127):
         tri = count_unit_distances(triangular_lattice(n), TOL)
         grid = count_unit_distances(erdos_grid(n), TOL)
@@ -115,7 +117,8 @@ def main():
         best_mk = max(
             count_unit_distances(hex_minkowski(n, th), TOL)
             for th in [(0.0, 0.3), (0.0, 0.55), (0.0, np.pi / 6), (0.0, 0.3, 0.7)])
-        print(f"  {n:>5}  {tri:>11}  {grid:>6}  {hc:>10}  {best_mk:>10}")
+        eis = count_unit_distances(eisenstein_grid(n), TOL)
+        print(f"  {n:>5}  {tri:>11}  {grid:>6}  {eis:>11}  {hc:>10}  {best_mk:>10}")
 
 
 if __name__ == "__main__":

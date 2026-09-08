@@ -35,6 +35,7 @@ FAMILIES = [
     ("prism doubled up+down", I.prism_double, "4.5n - O(sqrt n)"),
     ("centered hexagon x lattice", I.hex_lattice, "(3+12/7)n - O(sqrt n)"),
     ("Erdos rescaled grid", I.erdos_grid, "n^(1+c/log log n)"),
+    ("Eisenstein grid", I.eisenstein_grid, "n^(1+c/log log n), larger c"),
 ]
 
 SIZES = (100, 250, 600, 1500, 3000)

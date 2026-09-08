@@ -22,7 +22,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from erdos_unit_distance.counting import audit, count_unit_distances, min_separation
-from erdos_unit_distance.init import erdos_grid, hex_minkowski, triangular_lattice
+from erdos_unit_distance.init import (eisenstein_grid, erdos_grid,
+                                      hex_minkowski, triangular_lattice)
 
 TOL = 1e-9
 TRIANGLE = np.array([[0.0, 0.0], [1.0, 0.0], [0.5, np.sqrt(3) / 2.0]])
@@ -93,7 +94,8 @@ def main():
               f"{c:>6} {c / n:>9.2f}n  min sep {sep:.3f}")
 
     print("\nhead to head at matched n")
-    print(f"  {'n':>5} {'prism tiling':>13} {'triangular':>11} {'grid':>6} {'flower sums':>12}")
+    print(f"  {'n':>5} {'prism tiling':>13} {'triangular':>11} {'grid':>6} "
+          f"{'eisenstein':>11} {'flower sums':>12}")
     for a_, b_ in ((3, 3), (4, 4), (5, 5)):
         n = 3 * a_ * b_
         best = 0
@@ -108,6 +110,7 @@ def main():
         print(f"  {n:>5} {best:>13} "
               f"{count_unit_distances(triangular_lattice(n), TOL):>11} "
               f"{count_unit_distances(erdos_grid(n), TOL):>6} "
+              f"{count_unit_distances(eisenstein_grid(n), TOL):>11} "
               f"{count_unit_distances(hex_minkowski(n), TOL):>12}")
 
 
