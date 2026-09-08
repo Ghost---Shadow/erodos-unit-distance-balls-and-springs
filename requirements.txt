@@ -1,0 +1,2 @@
+numpy>=1.24
+matplotlib>=3.7   # live view and PNG output only; the solver runs on numpy alone
