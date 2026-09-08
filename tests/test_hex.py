@@ -58,3 +58,27 @@ def test_hex_minkowski_is_available_as_an_init():
     rng = np.random.default_rng(0)
     X = I.make("hex_minkowski", 40, rng)
     assert X.shape == (40, 2)
+
+
+def test_flower_sums_are_not_capped_by_a_fixed_angle_list():
+    """Asking for more points than the seed angles can build must add
+    factors, not silently return a smaller set."""
+    for k in (4, 5):
+        n = 7 ** k
+        P = I.hex_minkowski(n)
+        assert P.shape[0] == n
+        assert count_unit_distances(P, 1e-9) == 12 * k * 7 ** (k - 1)
+
+
+def test_generated_angles_stay_off_the_lattice_directions():
+    """A factor rotated onto a lattice direction would make copies land on
+    each other, which shows up as coincident points."""
+    P = I.hex_minkowski(7 ** 4)
+    assert audit(P, epsilon=1e-9).ok
+
+
+def test_explicit_angles_still_pin_the_factors():
+    """Passing angles explicitly must not trigger the on-demand extension."""
+    P = I.hex_minkowski(10_000, angles=(0.0, 0.3))
+    assert P.shape[0] == 49          # capped at 7^2 by the caller's choice
+    assert count_unit_distances(P, 1e-9) == 168

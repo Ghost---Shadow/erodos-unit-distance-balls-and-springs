@@ -96,7 +96,24 @@ def centered_hexagon(theta: float = 0.0) -> np.ndarray:
     return np.vstack([[0.0, 0.0], np.stack([np.cos(a), np.sin(a)], axis=1)])
 
 
-def hex_minkowski(n: int, angles=(0.0, 0.3, 0.7, 1.1)) -> np.ndarray:
+#: Seed angles for :func:`hex_minkowski`, extended on demand below.
+_FLOWER_ANGLES = (0.0, 0.3, 0.7, 1.1)
+
+
+def _flower_angle(k: int) -> float:
+    """A generic rotation for the k-th factor of a Minkowski sum.
+
+    The first few are fixed so small cases stay reproducible; past those
+    the golden angle supplies an endless supply of well-separated
+    rotations, none of which lands on a lattice direction.
+    """
+    if k < len(_FLOWER_ANGLES):
+        return _FLOWER_ANGLES[k]
+    golden = np.pi * (3.0 - np.sqrt(5.0))
+    return float(((k + 1) * golden) % (np.pi / 3.0))
+
+
+def hex_minkowski(n: int, angles=None) -> np.ndarray:
     """Minkowski sums of *rotated* centered hexagons.
 
     Summing k copies at generic angles gives 7^k distinct points carrying
@@ -109,10 +126,16 @@ def hex_minkowski(n: int, angles=(0.0, 0.3, 0.7, 1.1)) -> np.ndarray:
     triangular lattice, because the six hexagon vectors generate it.
     """
     P = np.zeros((1, 2))
-    for k in range(len(angles)):
-        if P.shape[0] >= n:
-            break
-        P = _dedupe((P[:, None, :] + centered_hexagon(angles[k])[None, :, :]).reshape(-1, 2))
+    k = 0
+    while P.shape[0] < n:
+        # Angles are generated on demand rather than taken from a fixed
+        # list: a fixed list silently caps the construction at 7^len,
+        # returning fewer points than asked for without saying so.
+        theta = angles[k] if angles is not None and k < len(angles) else _flower_angle(k)
+        P = _dedupe((P[:, None, :] + centered_hexagon(theta)[None, :, :]).reshape(-1, 2))
+        k += 1
+        if angles is not None and k >= len(angles):
+            break                        # caller pinned the factors explicitly
     return _closest_to_centre(P, n)
 
 
