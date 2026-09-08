@@ -249,6 +249,56 @@ it grows like `n log n`. Verified exactly for `k = 1..4`, up to 2401 points and
 itself grows logarithmically, feeding one in as the lattice basis inherits that
 growth.
 
+### The Erdős rescaling trick, and where it applies
+
+Erdős' grid is really two independent steps, and separating them is useful:
+
+1. build a point set whose pairwise **squared distances are integers**;
+2. find the value realised by the **most** pairs and scale by `1/sqrt` of it,
+   turning all of those pairs into unit distances.
+
+Step 2 is generic — `init.rescale_to_popular` applies it to any point set, and
+since it is only a similarity it can never merge points, so a valid
+configuration stays valid. Step 1 is the arithmetic part, and it is what
+actually does the work: integers have wildly uneven numbers of representations
+as a sum of two squares, so the distance histogram has a tall spike to aim at.
+
+**So can you rescale a flower sum? No — and the reason is the interesting
+part.** The two tricks pull in opposite directions. Rescaling needs a
+*concentrated* distance spectrum with one huge spike. Minkowski sums with
+generic rotations work by *spreading* the spectrum thin so that the unit
+distance is the only spike. Measured at n = 900:
+
+| construction | distinct distances | rescaling gain |
+|---|---|---|
+| triangular lattice | 273 | **2.59×** |
+| square lattice | 372 | 2.91× |
+| prism of triangles | 688 | 1.32× |
+| centered hexagon × lattice | 1498 | 1.02× |
+| rotated flower sums | 8260 | **1.00×** |
+
+The flower sums realise 8260 distinct distances across 404550 pairs — 49 pairs
+per distance on average — and their tallest spike is already the unit distance.
+There is nothing more popular to rescale to. The more a construction fragments
+its spectrum to win unit distances directly, the less the rescaling trick has
+left to offer it.
+
+**But applying step 2 to the triangular lattice pays handsomely.** Erdős used
+the square lattice, where squared distances are `i² + j²`. On the triangular
+lattice they are `i² + ij + j²` instead — norms of Eisenstein integers, the
+Loeschian numbers — whose representation counts spike on integers built from
+primes ≡ 1 mod 3. The spike is taller, and the result beats the square-grid
+version at every size measured:
+
+| n | 100 | 300 | 900 | 2700 |
+|---|---|---|---|---|
+| Erdős grid (square) | 288 | 1212 | 4944 | 19568 |
+| Eisenstein grid (triangular) | **411** | **1470** | **6706** | **25225** |
+
+That is `--init eisenstein_grid`, and it is the strongest construction here.
+Its most popular distance is `sqrt(7)`, and 7 ≡ 1 mod 3 exactly as the theory
+predicts. `scripts/explore_rescale.py` reproduces all of the above.
+
 Available as `--init prism`, `prism_double`, `hex_lattice`, `hex_minkowski`;
 `init.lattice_product(n, basis, lattice=...)` builds any other combination,
 and `init.density_limit(basis, lattice)` predicts what it will score.
@@ -267,8 +317,20 @@ where the real dividing line falls.
 | prism doubled k times, k fixed | (4 + k/2)n − Θ(√n) | Θ(n) |
 | centered hexagon × lattice | (3 + 12/7)n − Θ(√n) | Θ(n) |
 | rotated flower sums | (12/7)·n·log₇n | Θ(n log n) |
-| Erdős rescaled grid | n^(1+c/log log n) | superpolylogarithmic |
+| Erdős rescaled grid (square) | n^(1+c/log log n) | superpolylogarithmic |
+| Eisenstein grid (triangular) | n^(1+c/log log n), larger c | superpolylogarithmic |
 | best known upper bound | O(n^(4/3)) | Spencer–Szemerédi–Trotter, 1984 |
+
+The last three rows are the standing bounds on `u(n)` itself rather than
+constructions of this project's own: Erdős (1946) gives the lower bound — the
+Eisenstein grid is the same argument run over `i² + ij + j²` instead of
+`i² + j²` — and Spencer–Szemerédi–Trotter (1984) the upper. No one has closed
+the gap since.
+
+The solver itself is not in that table because it is a *search*, not a family
+with a closed form. It appears on the plot below as a dashed line, and it stops
+at `n = 80` for the honest reason that each point costs a full multi-restart
+search.
 
 **A fixed basis can only ever move the constant.** The density law
 `z/2 + u(B)/|B|` is a fixed number whenever `B` is a fixed set, so every
@@ -285,6 +347,25 @@ The doubling trick is the same story in disguise: one doubling adds 0.5 to a
 constant, but iterating it gives a basis of size `3·2^k` with density `4 + k/2`,
 which is again logarithmic in n. The lever was never the constant — it is
 whether the basis is allowed to grow.
+
+![growth rates](./docs/growth.png)
+
+The left panel is the whole problem in one picture: everything buildable sits
+in the band between Erdős's construction and the Spencer–Szemerédi–Trotter
+ceiling, and closing that gap is the open question. The `O(n^(4/3))` line is
+drawn for *shape* only — its constant is not determined, so it is positioned as
+an envelope above the data rather than as a prediction.
+
+The white dashed line is the solver itself: random start plus optimisation, no
+construction assumed. It is competitive at the left edge and stops at `n = 80`
+because each of its points is a full multi-restart search, not a formula. That
+early stop is the real limitation of the approach, and it is why the analytic
+families exist at all.
+
+The right panel is the more honest readout at these sizes. Density flattens for
+every fixed-basis family, each converging to its own `z/2 + u(B)/|B|`, while the
+two rescaled grids and the flower sums keep climbing. It also shows the
+crossover: flower sums lead until about n = 2400, where the grids pass them.
 
 `scripts/asymptotics.py` measures the local log-log slope
 `d log(edges) / d log(n)` for each family and reproduces the table:
@@ -329,6 +410,40 @@ Separately from what the constructions achieve, what the code costs:
 
 Row blocking bounds the *memory* of the pair loops, not the work.
 
+## The lattices are not assumed, they emerge
+
+Worth saying plainly, because it is easy to read this repo backwards: the
+solver is never told about any of the constructions above. It starts from
+uniform random points and only ever minimises the spring energy. The
+structures show up on their own.
+
+The clearest case is `n = 7`. The solver converges to the centered hexagon —
+hub plus six unit vectors, 12 unit distances — which is both the proven
+optimum `u(7)` and the building block that the flower sums are made of. It is
+the top-left panel of the gallery at the top of this README, and nothing in the
+code knew it was a target. Run `python run.py --n 7` and watch it find it.
+
+At `n = 20` to `30` the outputs are visibly lattice fragments: rows of unit
+triangles, hexagonal neighbourhoods, and translated copies of small motifs.
+That is the whole basis of the `B ⊕ lattice` family, arrived at from below.
+
+This makes for a usable workflow, and it is how several things here were found:
+
+1. run the optimiser at a size it handles well (`n ≲ 30`);
+2. look at what it converged to, and name the motif by eye;
+3. generalise it analytically — tile it, Minkowski-sum it, rescale it;
+4. verify the closed form numerically and audit it for coincident points.
+
+Step 2 is human inspection and there is currently no substitute for it in this
+code: the solver finds structures far more readily than it explains them. Step
+4 matters as much as step 3, since a plausible-looking generalisation can
+easily be a duplicate-point artefact rather than a construction — which is what
+the audit exists to catch.
+
+The honest limit is that this only works where the solver is strong. Past about
+`n = 30` it stops finding anything the constructions do not already beat, so
+the pipeline runs out of new motifs exactly where you would most want them.
+
 ## How good is the solver, really?
 
 Honestly: excellent for small `n`, and it runs out of steam as `n` grows.
@@ -351,8 +466,9 @@ there, and it does sometimes pay (at `n = 27`, a prism seed of 63 relaxes to
 python run.py --n 30 --headless --init prism --jitter 0.10 --trials 12
 ```
 
-Available starts: `random`, `triangular`, `square`, `erdos_grid`, `hex_flower`,
-`hex_minkowski`, `prism`, `prism_double`, `hex_lattice`, `moser`, `circle`.
+Available starts: `random`, `triangular`, `square`, `erdos_grid`,
+`eisenstein_grid`, `hex_flower`, `hex_minkowski`, `prism`, `prism_double`,
+`hex_lattice`, `moser`, `circle`.
 
 ## The live view
 
@@ -382,19 +498,20 @@ at the end.
 | `polish.py` | Levenberg–Marquardt projection onto exact unit distances |
 | `counting.py` | promoting springs to edges, and the overlap audit |
 | `solver.py` | the anneal → project → reheat pipeline and restarts |
-| `init.py` | starting configurations and the `B ⊕ lattice` constructions |
+| `init.py` | starting configurations, `B ⊕ lattice`, the rescaling trick |
 | `known.py` | proven optima, baselines, the `r-min` default |
 | `render.py` | live 2D view and static PNG output |
 | `cli.py` | argument parsing and the three run modes |
 
-`scripts/` holds the figure generator plus three exploration scripts:
+`scripts/` holds the figure generator plus four exploration scripts:
 `explore_hex.py` (honeycomb-family constructions), `explore_prism.py` (the
-stacked-triangle pattern and the density law), and `asymptotics.py` (measured
-growth rates against the closed forms).
+stacked-triangle pattern and the density law), `explore_rescale.py` (distance
+spectra and the rescaling trick), and `asymptotics.py` (measured growth rates
+against the closed forms).
 
 The solver needs only **numpy**; matplotlib is used for the view and PNGs.
 Gradients are analytic and finite-difference tested for every law, with and
-without failure and core repulsion active. `pytest tests -q` runs 150 tests.
+without failure and core repulsion active. `pytest tests -q` runs 158 tests.
 
 ## Caveats
 

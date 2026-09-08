@@ -226,6 +226,7 @@ def main():
     figure_anneal(os.path.join(DOCS, "anneal.png"))
     figure_rhombus(os.path.join(DOCS, "rhombus.png"))
     figure_constructions(os.path.join(DOCS, "constructions.png"))
+    figure_growth(os.path.join(DOCS, "growth.png"))
     figure_solutions(os.path.join(DOCS, "solutions.png"))
 
 
@@ -334,6 +335,165 @@ def figure_rhombus(path):
                  color=FG, fontsize=13, family="monospace", y=0.97)
     fig.tight_layout(rect=(0, 0.10, 1, 0.90))
     fig.savefig(path, facecolor=BG, dpi=125)
+    plt.close(fig)
+    print("wrote", path)
+
+
+
+
+GROWTH_SIZES = (100, 250, 600, 1500, 3000)
+
+#: Distinct hues; the two superlinear families are warm so they read as a
+#: different class from the linear lattice ones.
+GROWTH_COLORS = {
+    "square lattice": "#5b7fa6",
+    "triangular lattice": "#5ee2c0",
+    "prism of triangles": "#7fd4a0",
+    "prism doubled": "#b5d97a",
+    "centered hexagon x lattice": "#ffd166",
+    "rotated flower sums": "#f0883e",
+    "Erdos rescaled grid": "#e8564f",
+    "Eisenstein grid": "#c678dd",
+    "random + optimisation": "#ffffff",
+}
+
+
+def figure_growth(path):
+    """Counts and densities against n, with the known bounds for scale.
+
+    The construction gallery only covers the B (+) lattice family, so the
+    Erdos rescaled grid never appears there -- it is a different animal.
+    Here it does, next to the O(n^4/3) upper bound that caps everything.
+    """
+    seg = np.array([[0.0, 0.0], [1.0, 0.0]])
+    families = [
+        ("square lattice", lambda n: I.square_lattice(n)),
+        ("triangular lattice", lambda n: I.triangular_lattice(n)),
+        ("prism of triangles", lambda n: I.prism_lattice(n)),
+        ("prism doubled", lambda n: I.prism_double(n)),
+        ("centered hexagon x lattice", lambda n: I.hex_lattice(n)),
+        ("Erdos rescaled grid", lambda n: I.erdos_grid(n)),
+        ("Eisenstein grid", lambda n: I.eisenstein_grid(n)),
+    ]
+
+    data = {}
+    for label, fn in families:
+        pts = [(n, count_unit_distances(fn(n), 1e-9)) for n in GROWTH_SIZES]
+        data[label] = pts
+        print(f"  {label:<28} " + " ".join(f"{e:>6}" for _, e in pts))
+
+    # Flower sums only hold their structure at n = 7^k, so they get their
+    # own sample points rather than being forced onto the shared grid.
+    flower = [(7 ** k, count_unit_distances(I.hex_minkowski(7 ** k), 1e-9))
+              for k in range(2, 6)]
+    data["rotated flower sums"] = flower
+    print("  rotated flower sums          " + " ".join(f"{e:>6}" for _, e in flower))
+
+    # The solver itself, as a baseline.  It only reaches small n -- each
+    # point is a full multi-restart search -- and that ceiling is exactly
+    # the thing worth showing next to the constructions.
+    #
+    # Cached: recomputing this on every figure rebuild costs minutes and
+    # is the slowest thing in this script by a wide margin.  Delete the
+    # cache file to re-measure.
+    import json
+
+    cache = os.path.join(DOCS, "solver_baseline.json")
+    if os.path.exists(cache):
+        with open(cache, encoding="utf-8") as fh:
+            solver = [tuple(row) for row in json.load(fh)]
+        print(f"  random + optimisation        (cached from {cache})")
+    else:
+        from erdos_unit_distance.solver import solve_multi
+        solver = [(n, solve_multi(n, trials=4, seed=0).edges)
+                  for n in (20, 40, 80)]
+        with open(cache, "w", encoding="utf-8") as fh:
+            json.dump(solver, fh)
+    data["random + optimisation"] = solver
+    print("  random + optimisation        " +
+          " ".join(f"{e:>6}" for _, e in solver))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16.0, 7.0), facecolor=BG)
+    for ax in (ax1, ax2):
+        ax.set_facecolor(BG)
+        for sp in ax.spines.values():
+            sp.set_color("#2a3244")
+        ax.tick_params(colors="#8b9ab2", labelsize=9)
+        ax.grid(True, which="both", color="#1b2130", lw=0.7)
+        ax.set_axisbelow(True)
+
+    # -- counts, log-log, with the bounds ----------------------------- #
+    ax1.set_xscale("log")
+    ax1.set_yscale("log")
+    grid_pts = data["Erdos rescaled grid"]
+    n_hi, e_hi = grid_pts[-1]
+
+    ns = np.logspace(np.log10(15), np.log10(20000), 60)
+    # The upper bound's constant is not determined; anchor it above the
+    # best construction so it reads as an envelope, not a prediction.
+    ax1.plot(ns, 2.2 * e_hi * (ns / n_hi) ** (4.0 / 3.0), color="#8b9ab2",
+             lw=1.6, ls=(0, (6, 4)), zorder=1)
+    ax1.text(ns[-1], 2.2 * e_hi * (ns[-1] / n_hi) ** (4.0 / 3.0),
+             "  O(n^4/3) upper bound", color="#8b9ab2", fontsize=9.5,
+             family="monospace", va="center")
+    ax1.text(ns[-1], 1.05 * e_hi * (ns[-1] / n_hi) ** (4.0 / 3.0),
+             "  Spencer-Szemeredi-Trotter 1984", color="#6b7a90",
+             fontsize=8.5, family="monospace", va="center")
+    ax1.plot(ns, 3.0 * ns, color="#3d4a5c", lw=1.4, ls=(0, (2, 3)), zorder=1)
+    ax1.text(ns[-1], 3.0 * ns[-1], "  3n", color="#3d4a5c", fontsize=9.5,
+             family="monospace", va="center")
+
+    for label, pts in data.items():
+        xs = [n for n, _ in pts]
+        ys = [e for _, e in pts]
+        shown = {"Erdos rescaled grid": "Erdos grid: n^(1+c/log log n), Erdos 1946",
+                 "random + optimisation": "random + optimisation (this solver)",
+                 }.get(label, label)
+        # The solver is dashed: it is a search result, not a construction,
+        # and it stops early because each point costs a full search.
+        style = "--s" if label == "random + optimisation" else "-o"
+        ax1.plot(xs, ys, style, color=GROWTH_COLORS[label], lw=1.9, ms=4.5,
+                 label=shown, zorder=4 if label == "random + optimisation" else 3)
+    ax1.set_xlabel("n (points)", color=FG, fontsize=10, family="monospace")
+    ax1.set_ylabel("unit distances", color=FG, fontsize=10, family="monospace")
+    ax1.set_title("counts, log-log", color=FG, fontsize=12,
+                  family="monospace", pad=10)
+    ax1.set_xlim(15, 60000)
+    leg = ax1.legend(loc="lower right", fontsize=9, facecolor="#11151f",
+                     edgecolor="#2a3244", labelcolor=FG, framealpha=0.95)
+    for text in leg.get_texts():
+        text.set_family("monospace")
+
+    # -- density, the discriminating view ----------------------------- #
+    ax2.set_xscale("log")
+    for label, pts in data.items():
+        xs = [n for n, _ in pts]
+        ys = [e / n for n, e in pts]
+        style = "--s" if label == "random + optimisation" else "-o"
+        ax2.plot(xs, ys, style, color=GROWTH_COLORS[label], lw=1.9, ms=4.5,
+                 zorder=4 if label == "random + optimisation" else 3)
+    # 4.5 and 4.71 are too close to label side by side, so the doubled
+    # line is drawn but named in the caption instead.
+    for y, text in ((2.0, "2n square"), (3.0, "3n triangular"),
+                    (4.0, "4n prism"), (4.5, ""),
+                    (3.0 + 12.0 / 7.0, "4.5n doubled / 4.71n hexagon")):
+        ax2.axhline(y, color="#3d4a5c", lw=0.9, ls=(0, (2, 3)), zorder=1)
+        if text:
+            ax2.text(17.0, y + 0.13, text, color="#6b7a90", fontsize=8.5,
+                     family="monospace", va="bottom", ha="left")
+    ax2.set_xlabel("n (points)", color=FG, fontsize=10, family="monospace")
+    ax2.set_ylabel("unit distances / n", color=FG, fontsize=10,
+                   family="monospace")
+    ax2.set_title("density: the linear families flatten, the others do not",
+                  color=FG, fontsize=12, family="monospace", pad=10)
+    ax2.set_xlim(15, 3.0e4)
+    ax2.set_ylim(1.5, 10.5)
+
+    fig.suptitle("growth rates: u(n) lies between the Erdos construction "
+                 "and the Spencer-Szemeredi-Trotter bound",
+                 color=FG, fontsize=13, family="monospace", y=0.975)
+    fig.tight_layout(rect=(0, 0.01, 1, 0.93))
+    fig.savefig(path, facecolor=BG, dpi=120)
     plt.close(fig)
     print("wrote", path)
 
